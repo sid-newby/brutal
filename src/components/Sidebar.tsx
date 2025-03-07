@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, MessageSquare, Settings, ChevronUp, ChevronDown, Code, Search, FileJson, FunctionSquare, Thermometer, Cpu, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Settings, ChevronUp, ChevronDown, Code, Search, FileJson, FunctionSquare, Thermometer, Cpu, ChevronRight, X, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as ScrollArea from '@radix-ui/react-scroll-area';
 import { Thread, ModelType } from '../types';
@@ -12,6 +12,7 @@ interface SidebarProps {
   onNewThread: () => void;
   onDeleteThread: (threadId: string) => void;
   onUpdateThread?: (threadId: string, updates: Partial<Thread>) => void;
+  onClearAllThreads?: () => void;
 }
 
 // Define the possible AI modes as a type
@@ -24,12 +25,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectThread,
   onNewThread,
   onDeleteThread,
-  onUpdateThread
+  onUpdateThread,
+  onClearAllThreads
 }) => {
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<AIMode>('codeExecution');
   const [temperature, setTemperature] = useState(0.7);
   const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-2.0-pro-exp-02-05');
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -217,7 +220,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         }}
       />
       
-      <div className="p-3">
+      <div className="p-3 space-y-2">
         <motion.button 
           onClick={onNewThread}
           className="w-full flex items-center justify-center gap-2 py-2.5 px-3 border-1 border-white/20 bg-pure-black hover:bg-pure-black/60 hover:text-secondary transition-colors duration-200 component-with-border"
@@ -236,6 +239,77 @@ const Sidebar: React.FC<SidebarProps> = ({
           <Plus size={16} />
           <span className="text-sm">New chat</span>
         </motion.button>
+        
+        {threads.length > 0 && (
+          <motion.button 
+            onClick={() => setConfirmClearOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-1.5 px-3 opacity-60 hover:opacity-100 hover:text-red-400 transition-all duration-200"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <Trash2 size={14} />
+            <span className="text-xs">Clear all</span>
+          </motion.button>
+        )}
+        
+        {/* Confirmation Dialog */}
+        <AnimatePresence>
+          {confirmClearOpen && (
+            <motion.div
+              className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmClearOpen(false)}
+            >
+              <motion.div
+                className="bg-darkergrey p-4 rounded-lg max-w-xs w-full component-with-border"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                style={{ borderColor: 'var(--border-color)' }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle size={18} className="text-red-400" />
+                  <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Clear All Conversations?</h3>
+                </div>
+                <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>
+                  This will permanently delete all conversations. This action cannot be undone.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <motion.button 
+                    onClick={() => setConfirmClearOpen(false)}
+                    className="px-3 py-1.5 text-xs component-with-border"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    style={{ 
+                      backgroundColor: 'var(--darkgrey)',
+                      color: 'var(--text-primary)',
+                      borderColor: 'var(--border-color)'
+                    }}
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button 
+                    onClick={() => {
+                      if (onClearAllThreads) {
+                        onClearAllThreads();
+                      }
+                      setConfirmClearOpen(false);
+                    }}
+                    className="px-3 py-1.5 text-xs bg-red-900/30 border-red-600/50 text-red-400 component-with-border"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Clear All
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       
       <ScrollArea.Root className="flex-1 overflow-hidden">

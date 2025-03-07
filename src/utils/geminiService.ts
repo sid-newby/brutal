@@ -15,7 +15,6 @@ interface GeminiServiceOptions {
 
 class GeminiService {
   private genAI: GoogleGenerativeAI;
-  private model: any;
   private chat: any;
 
   constructor() {
@@ -24,10 +23,7 @@ class GeminiService {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
     this.genAI = new GoogleGenerativeAI(apiKey);
     
-    // Initialize the generative model 
-    this.model = this.genAI.getGenerativeModel({
-      model: "gemini-2.0-pro-exp-02-05",
-    });
+    // Note: We don't store a model instance here since we create it dynamically based on the selected model
   }
 
   // Format messages for Gemini API
@@ -62,19 +58,19 @@ class GeminiService {
         safetySettings: [
           {
             category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_ONLY_HIGH",
+            threshold: "OFF",
           },
           {
             category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_ONLY_HIGH",
+            threshold: "OFF",
           },
           {
             category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_ONLY_HIGH",
+            threshold: "OFF",
           },
           {
             category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_ONLY_HIGH",
+            threshold: "OFF",
           },
         ],
       };
@@ -397,8 +393,8 @@ class GeminiService {
       });
       
       // Handle function calling if present
-      if (options?.functionCalling && result.response.functionCalling && result.response.functionCalling()) {
-        const functionCall = result.response.functionCalling();
+      if (options?.functionCalling && result.response.functionCall && result.response.functionCall()) {
+        const functionCall = result.response.functionCall();
         return `Function Call: ${functionCall.name}\nArguments: ${JSON.stringify(functionCall.args, null, 2)}`;
       }
       

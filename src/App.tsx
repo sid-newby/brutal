@@ -6,9 +6,11 @@ import ChatMessages from './components/ChatMessages';
 import ChatInput from './components/ChatInput';
 import EmptyState from './components/EmptyState';
 import WebContainer from './components/WebContainer';
+import SystemPromptModal from './components/SystemPromptModal';
 import GeometricShapes from './components/GeometricShapes';
 import { Thread, Message } from './types';
-import { createSampleThreads, generateId } from './utils/mockData';
+import { generateId } from './utils/mockData';
+import { saveThreads, loadThreads, clearThreads } from './utils/threadUtils';
 import geminiService from './utils/geminiService';
 
 function App() {
@@ -17,6 +19,7 @@ function App() {
   const [activeThreadId, setActiveThreadId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [theme, setTheme] = useState<'theme-ultra-dark' | 'theme-light'>('theme-ultra-dark');
+  const [systemPromptModalOpen, setSystemPromptModalOpen] = useState(false);
   const [webContainer, setWebContainer] = useState({
     isOpen: false,
     url: '',
@@ -24,15 +27,25 @@ function App() {
     title: 'Web Preview'
   });
 
-  // Initialize with sample data
+  // Initialize from local storage or with sample data
   useEffect(() => {
-    const sampleThreads = createSampleThreads();
-    setThreads(sampleThreads);
-    setActiveThreadId(sampleThreads[0].id);
+    const loadedThreads = loadThreads();
+    setThreads(loadedThreads);
+    
+    if (loadedThreads.length > 0) {
+      setActiveThreadId(loadedThreads[0].id);
+    }
     
     // Set initial theme class
     document.body.classList.add('theme-ultra-dark');
   }, []);
+  
+  // Save threads to local storage whenever they change
+  useEffect(() => {
+    if (threads.length > 0) {
+      saveThreads(threads);
+    }
+  }, [threads]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'theme-ultra-dark' ? 'theme-light' : 'theme-ultra-dark';
@@ -44,6 +57,16 @@ function App() {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+  
+  const toggleSystemPrompt = () => {
+    setSystemPromptModalOpen(!systemPromptModalOpen);
+  };
+  
+  const handleSaveSystemPrompt = (value: string) => {
+    if (!activeThreadId) return;
+    
+    handleUpdateThread(activeThreadId, { systemPrompt: value });
+  };
 
   const handleNewThread = () => {
     const newThread: Thread = {
@@ -54,27 +77,67 @@ function App() {
       updatedAt: new Date()
     };
     
-    setThreads([newThread, ...threads]);
+    // Add the new thread at the beginning of the list
+    const updatedThreads = [newThread, ...threads];
+    
+    // Update state
+    setThreads(updatedThreads);
     setActiveThreadId(newThread.id);
+    
+    // Save to local storage
+    saveThreads(updatedThreads);
   };
 
   const handleDeleteThread = (threadId: string) => {
+    // Remove the thread from the list
     const updatedThreads = threads.filter(thread => thread.id !== threadId);
+    
+    // Update state
     setThreads(updatedThreads);
     
+    // If the active thread was deleted, select another one
     if (activeThreadId === threadId) {
       setActiveThreadId(updatedThreads.length > 0 ? updatedThreads[0].id : '');
     }
+    
+    // Save to local storage
+    saveThreads(updatedThreads);
   };
   
   const handleUpdateThread = (threadId: string, updates: Partial<Thread>) => {
-    setThreads(prevThreads => 
-      prevThreads.map(thread => 
-        thread.id === threadId 
-          ? { ...thread, ...updates, updatedAt: new Date() }
-          : thread
-      )
+    // Update the thread with new properties
+    const updatedThreads = threads.map(thread => 
+      thread.id === threadId 
+        ? { ...thread, ...updates, updatedAt: new Date() }
+        : thread
     );
+    
+    // Update state
+    setThreads(updatedThreads);
+    
+    // Save to local storage
+    saveThreads(updatedThreads);
+  };
+  
+  const handleClearAllThreads = () => {
+    // Create a new empty thread
+    const newThread: Thread = {
+      id: generateId(),
+      title: 'New Conversation',
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    // Reset state with just the new thread
+    setThreads([newThread]);
+    setActiveThreadId(newThread.id);
+    
+    // Clear local storage
+    clearThreads();
+    
+    // Save the new thread to local storage
+    saveThreads([newThread]);
   };
 
   const openWebContainer = (options: { url?: string; content?: string; title?: string }) => {
@@ -262,6 +325,7 @@ function App() {
         sidebarOpen={sidebarOpen} 
         theme={theme}
         toggleTheme={toggleTheme}
+        toggleSystemPrompt={toggleSystemPrompt}
       />
       
       <GeometricShapes />
@@ -277,6 +341,7 @@ function App() {
               onNewThread={handleNewThread}
               onDeleteThread={handleDeleteThread}
               onUpdateThread={handleUpdateThread}
+              onClearAllThreads={handleClearAllThreads}
             />
           )}
         </AnimatePresence>
@@ -298,6 +363,13 @@ function App() {
         url={webContainer.url}
         content={webContainer.content}
         title={webContainer.title}
+      />
+      
+      <SystemPromptModal
+        isOpen={systemPromptModalOpen}
+        onClose={() => setSystemPromptModalOpen(false)}
+        initialValue={activeThread?.systemPrompt || ''}
+        onSave={handleSaveSystemPrompt}
       />
     </div>
   );
