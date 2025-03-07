@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import ChatHeader from './components/ChatHeader';
 import Sidebar from './components/Sidebar';
@@ -225,7 +225,7 @@ function App() {
       
       // Send the message to Gemini API with thinking updates
       const response = await geminiService.sendChatMessage(content, {
-        temperature: activeThread.temperature || 0.1,
+        temperature: activeThread.temperature || 0,
         structuredOutput: activeThread.structuredOutput || false,
         codeExecution: activeThread.codeExecution || false,
         functionCalling: activeThread.functionCalling || false,

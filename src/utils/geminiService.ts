@@ -39,7 +39,7 @@ class GeminiService {
     try {
       // Set up generation config
       const generationConfig = {
-        temperature: options?.temperature || 0.1,
+        temperature: options?.temperature || 0,
         maxOutputTokens: options?.maxOutputTokens || 2048,
         topP: 0.8,
         topK: 40,
@@ -221,7 +221,7 @@ class GeminiService {
     // Store the chat history and settings for later use
     this.chat = {
       history: formattedMessages,
-      temperature: thread.temperature || 0.1,
+      temperature: thread.temperature || 0,
       structuredOutput: thread.structuredOutput || false,
       codeExecution: thread.codeExecution || false,
       functionCalling: thread.functionCalling || false,
@@ -243,7 +243,7 @@ class GeminiService {
 
       // Set up generation config with temperature
       const generationConfig = {
-        temperature: options?.temperature !== undefined ? options.temperature : (this.chat.temperature || 0.1),
+        temperature: options?.temperature !== undefined ? options.temperature : (this.chat.temperature || 0),
         maxOutputTokens: options?.maxOutputTokens || 2048,
         topP: 0.8,
         topK: 40,
@@ -393,9 +393,13 @@ class GeminiService {
       });
       
       // Handle function calling if present
-      if (options?.functionCalling && result.response.functionCall && result.response.functionCall()) {
-        const functionCall = result.response.functionCall();
-        return `Function Call: ${functionCall.name}\nArguments: ${JSON.stringify(functionCall.args, null, 2)}`;
+      if (options?.functionCalling && result.response.functionCall) {
+        const functionCallMethod = result.response.functionCall;
+        const functionCallResult = functionCallMethod();
+        
+        if (functionCallResult) {
+          return `Function Call: ${functionCallResult.name}\nArguments: ${JSON.stringify(functionCallResult.args, null, 2)}`;
+        }
       }
       
       return responseText;
@@ -413,7 +417,7 @@ class GeminiService {
 
       // Set up generation config
       const generationConfig = {
-        temperature: options?.temperature || 0.1,
+        temperature: options?.temperature || 0,
         maxOutputTokens: options?.maxOutputTokens || 2048,
         topP: 0.8,
         topK: 40,

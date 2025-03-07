@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, MessageSquare, Settings, ChevronUp, ChevronDown, Code, Search, FileJson, FunctionSquare, Thermometer, Cpu, ChevronRight, X, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Settings, ChevronUp, ChevronDown, Code, Search, FileJson, FunctionSquare, Thermometer, Cpu, ChevronRight, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as ScrollArea from '@radix-ui/react-scroll-area';
 import { Thread, ModelType } from '../types';
@@ -16,7 +16,7 @@ interface SidebarProps {
 }
 
 // Define the possible AI modes as a type
-type AIMode = 'structuredOutput' | 'codeExecution' | 'functionCalling' | 'groundingSearch' | null;
+type AIMode = 'structuredOutput' | 'codeExecution' | 'functionCalling' | 'groundingSearch' | 'none';
 
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -30,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<AIMode>('codeExecution');
-  const [temperature, setTemperature] = useState(0.7);
+  const [temperature, setTemperature] = useState(0);
   const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-2.0-pro-exp-02-05');
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
@@ -107,21 +107,19 @@ const Sidebar: React.FC<SidebarProps> = ({
     
     // If the mode is already active, deactivate it
     if (activeMode === mode) {
-      setActiveMode(null);
+      setActiveMode('none');
       
       // Update the active thread if we have an update handler
       if (onUpdateThread && activeThreadId) {
-        const modeToProperty: Record<AIMode, keyof Thread | null> = {
-          'structuredOutput': 'structuredOutput',
-          'codeExecution': 'codeExecution',
-          'functionCalling': 'functionCalling',
-          'groundingSearch': 'groundingSearch',
-          'null': null
-        };
-        
-        const propertyName = modeToProperty[mode];
-        if (propertyName) {
-          onUpdateThread(activeThreadId, { [propertyName]: false });
+        // When deactivating a mode, simply set the corresponding property to false
+        if (mode === 'structuredOutput') {
+          onUpdateThread(activeThreadId, { structuredOutput: false });
+        } else if (mode === 'codeExecution') {
+          onUpdateThread(activeThreadId, { codeExecution: false });
+        } else if (mode === 'functionCalling') {
+          onUpdateThread(activeThreadId, { functionCalling: false });
+        } else if (mode === 'groundingSearch') {
+          onUpdateThread(activeThreadId, { groundingSearch: false });
         }
       }
     } else {
@@ -138,19 +136,22 @@ const Sidebar: React.FC<SidebarProps> = ({
           groundingSearch: false,
         };
         
-        // Then enable the selected mode
-        const modeToProperty: Record<AIMode, keyof Thread | null> = {
-          'structuredOutput': 'structuredOutput',
-          'codeExecution': 'codeExecution',
-          'functionCalling': 'functionCalling',
-          'groundingSearch': 'groundingSearch',
-          'null': null
-        };
-        
-        const propertyName = modeToProperty[mode];
-        if (propertyName) {
-          updates[propertyName as keyof Thread] = true;
-        }
+          // Then enable the selected mode
+          // Only enable the selected mode if it's not 'none'
+          if (mode !== 'none') {
+            const modeMap: Record<Exclude<AIMode, 'none'>, keyof Thread> = {
+              'structuredOutput': 'structuredOutput',
+              'codeExecution': 'codeExecution',
+              'functionCalling': 'functionCalling',
+              'groundingSearch': 'groundingSearch'
+            };
+            
+            // Type safety: only assign true to fields we know exist on Thread
+            const propName = modeMap[mode as Exclude<AIMode, 'none'>];
+            if (propName in updates) {
+              (updates as any)[propName] = true;
+            }
+          }
         
         onUpdateThread(activeThreadId, updates);
       }
@@ -163,7 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     
     // If switching to Thinking model and current mode is not compatible, reset it
     if (model === 'gemini-2.0-flash-thinking-exp-01-21' && activeMode !== 'codeExecution') {
-      setActiveMode(null);
+      setActiveMode('none');
     }
     
     // Update the active thread if we have an update handler
@@ -172,12 +173,17 @@ const Sidebar: React.FC<SidebarProps> = ({
       
       // If switching to Thinking model, turn off incompatible features
       if (model === 'gemini-2.0-flash-thinking-exp-01-21') {
+        // Create proper updates with all necessary fields
         updates.structuredOutput = false;
         updates.functionCalling = false;
         updates.groundingSearch = false;
         
-        // Keep code execution if it was on
-        updates.codeExecution = activeMode === 'codeExecution';
+        // Handle code execution based on active mode
+        if (activeMode === 'codeExecution') {
+          updates.codeExecution = true;
+        } else {
+          updates.codeExecution = false;
+        }
       }
       
       onUpdateThread(activeThreadId, updates);
