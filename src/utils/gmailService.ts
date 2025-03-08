@@ -2,8 +2,7 @@ import { Message as EmailMessage } from '../types';
 import { 
   GmailAttachment, 
   GmailEmail, 
-  GmailSyncOptions, 
-  GmailSyncState
+  GmailSyncOptions
 } from '../types/gmail';
 import emailDbService from '../db/emailDbService';
 import gmailApi from '../server/gmailApi';
@@ -15,7 +14,13 @@ import gmailApi from '../server/gmailApi';
  */
 class GmailService {
   private cachedEmails: GmailEmail[] = [];
-  private lastSyncTime: string | null = null;
+  // Track last sync time for metrics/debugging
+  private _lastSyncTime: string | null = null;
+  
+  // Getter for sync timestamp
+  get lastSyncTime(): string | null {
+    return this._lastSyncTime;
+  }
 
   constructor() {
     // Initialize service
@@ -38,7 +43,7 @@ class GmailService {
       
       // Update cached emails and sync time
       this.cachedEmails = [...this.cachedEmails, ...emails];
-      this.lastSyncTime = new Date().toISOString();
+      this._lastSyncTime = new Date().toISOString();
       
       return emails;
     } catch (error) {

@@ -17,10 +17,11 @@ const TOKEN_PATH = fs.existsSync(path.join(__dirname, '../../token.json'))
   ? path.join(__dirname, '../../token.json')
   : path.join(__dirname, '../../../tacks/executioner/token.json');
 
-const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
+// Define scopes needed for Gmail API access (required for OAuth flow)
+const GMAIL_READONLY_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
 // Create a Gmail API client using OAuth 2.0
-async function getGmailClient() {
+async function getGmailClient(scopes = [GMAIL_READONLY_SCOPE]) {
   try {
     // Check if we have stored credentials
     if (!fs.existsSync(CREDENTIALS_PATH)) {
@@ -36,7 +37,7 @@ async function getGmailClient() {
     // Create OAuth2 client
     const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
     const oAuth2Client = new google.auth.OAuth2(
-      client_id, client_secret, redirect_uris.find(uri => uri.includes('/oauth/callback')) || redirect_uris[0]
+      client_id, client_secret, redirect_uris.find((uri: string) => uri.includes('/oauth/callback')) || redirect_uris[0]
     );
 
     // Check if we have a stored token
@@ -47,7 +48,11 @@ async function getGmailClient() {
 
     // Set credentials using the stored token
     const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'));
-    oAuth2Client.setCredentials(token);
+    // Set credentials with the token and ensure proper scopes
+    oAuth2Client.setCredentials({
+      ...token,
+      scope: Array.isArray(token.scope) ? token.scope : scopes.join(' ')
+    });
     
     console.log(`Using Gmail API with OAuth authentication`);
     
@@ -59,23 +64,23 @@ async function getGmailClient() {
 }
 
 // Parse email message
-function parseMessage(message) {
+function parseMessage(message: any): GmailEmail {
   const payload = message.payload;
   const headers = payload.headers;
   
   // Extract basic email info from headers
-  const subject = headers.find(h => h.name === 'Subject')?.value || '';
-  const from_email = headers.find(h => h.name === 'From')?.value || '';
-  const to_email = headers.find(h => h.name === 'To')?.value || '';
-  const date = headers.find(h => h.name === 'Date')?.value || '';
+  const subject = headers.find((h: any) => h.name === 'Subject')?.value || '';
+  const from_email = headers.find((h: any) => h.name === 'From')?.value || '';
+  const to_email = headers.find((h: any) => h.name === 'To')?.value || '';
+  const date = headers.find((h: any) => h.name === 'Date')?.value || '';
   
   // Extract body content
   let body_text = '';
   let body_html = '';
-  const attachments = [];
+  const attachments: GmailAttachment[] = [];
   
   // Process parts recursively
-  function processParts(part, emailId) {
+  function processParts(part: any, emailId: string): void {
     const mimeType = part.mimeType;
     
     if (mimeType === 'text/plain' && part.body.data) {
@@ -84,7 +89,7 @@ function parseMessage(message) {
       body_html = Buffer.from(part.body.data, 'base64').toString('utf-8');
     } else if (part.parts) {
       // Multipart message, process each part
-      part.parts.forEach(subpart => processParts(subpart, emailId));
+      part.parts.forEach((subpart: any) => processParts(subpart, emailId));
     } else if (part.body.attachmentId) {
       // This is an attachment
       attachments.push({
@@ -103,7 +108,7 @@ function parseMessage(message) {
   } else if (payload.mimeType === 'text/html' && payload.body.data) {
     body_html = Buffer.from(payload.body.data, 'base64').toString('utf-8');
   } else if (payload.parts) {
-    payload.parts.forEach(part => processParts(part, message.id));
+    payload.parts.forEach((part: any) => processParts(part, message.id));
   }
   
   return {
@@ -125,7 +130,7 @@ function parseMessage(message) {
 }
 
 // Fetch and save attachment content
-async function fetchAndSaveAttachment(gmail, messageId, attachment) {
+async function fetchAndSaveAttachment(gmail: any, messageId: string, attachment: GmailAttachment): Promise<boolean> {
   try {
     const response = await gmail.users.messages.attachments.get({
       userId: 'me',
@@ -134,12 +139,13 @@ async function fetchAndSaveAttachment(gmail, messageId, attachment) {
     });
     
     if (response.data && response.data.data) {
-      const content = Buffer.from(response.data.data, 'base64');
+      // Convert buffer to string for storage
+      const contentBuffer = Buffer.from(response.data.data, 'base64');
       
       // Save to database
       emailDbService.saveAttachment({
         ...attachment,
-        content
+        content: contentBuffer.toString('base64')
       });
       
       return true;
@@ -154,12 +160,12 @@ async function fetchAndSaveAttachment(gmail, messageId, attachment) {
 // Gmail API service
 const gmailApi = {
   // Check authentication status
-  async getAuthStatus() {
+  async getAuthStatus(): Promise<GmailAuthStatus> {
     try {
-      const client = await getGmailClient();
+      await getGmailClient();
       // If we get here without an error, we're authenticated
       return { authenticated: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Authentication check failed:', error);
       return { 
         authenticated: false,
@@ -169,7 +175,7 @@ const gmailApi = {
   },
   
   // Fetch emails with options
-  async fetchEmails(options = {}) {
+  async fetchEmails(options: GmailSyncOptions = {}): Promise<GmailEmail[]> {
     try {
       // Parse options with defaults
       const query = options.query || '';
@@ -180,7 +186,7 @@ const gmailApi = {
       const gmail = await getGmailClient();
       
       // Check if we can use differential sync
-      let messages = [];
+      let messages: {id: string}[] = [];
       let historyId = null;
       let syncState = null;
       
@@ -204,20 +210,20 @@ const gmailApi = {
               
               historyResponse.data.history.forEach(history => {
                 if (history.messagesAdded) {
-                  history.messagesAdded.forEach(msg => messageIds.add(msg.message.id));
+                  history.messagesAdded.forEach(msg => msg.message && messageIds.add(msg.message.id));
                 }
                 if (history.labelsAdded) {
-                  history.labelsAdded.forEach(msg => messageIds.add(msg.message.id));
+                  history.labelsAdded.forEach(msg => msg.message && messageIds.add(msg.message.id));
                 }
                 if (history.labelsRemoved) {
-                  history.labelsRemoved.forEach(msg => messageIds.add(msg.message.id));
+                  history.labelsRemoved.forEach(msg => msg.message && messageIds.add(msg.message.id));
                 }
               });
               
               console.log(`Found ${messageIds.size} changed messages since last sync`);
               
-              // Convert Set to Array
-              messages = Array.from(messageIds).map(id => ({ id }));
+              // Convert Set to Array with type safety
+              messages = Array.from(messageIds).map(id => ({ id: String(id) }));
               historyId = historyResponse.data.historyId;
             }
           } catch (historyError) {
@@ -238,16 +244,23 @@ const gmailApi = {
           maxResults
         });
         
-        messages = response.data.messages || [];
-        historyId = response.data.historyId;
+        // Ensure each message has a non-null id
+        messages = (response.data.messages || [])
+          .filter(msg => msg && msg.id)
+          .map(msg => ({ id: String(msg.id) }));
+        // historyId might not be directly available in the type definition, but is returned by the API
+        historyId = (response.data as any).historyId || null;
       }
       
       console.log(`Found ${messages.length} messages to process`);
       
       // Process each message
-      const processedEmails = [];
+      const processedEmails: GmailEmail[] = [];
       
-      for (const msg of messages) {
+      // TypeScript safety - ensure messages is an array
+      const messageArray: {id: string}[] = Array.isArray(messages) ? messages : [];
+      
+      for (const msg of messageArray) {
         // Get full message details
         const messageResponse = await gmail.users.messages.get({
           userId: 'me',
@@ -300,7 +313,7 @@ const gmailApi = {
   },
   
   // Search emails with query
-  async searchEmails(query, limit = 20, offset = 0) {
+  async searchEmails(query: string, limit = 20, offset = 0): Promise<GmailEmail[]> {
     try {
       return emailDbService.searchEmails(query, limit, offset);
     } catch (error) {
@@ -310,7 +323,7 @@ const gmailApi = {
   },
   
   // Get a single email by ID
-  async getEmail(id) {
+  async getEmail(id: string): Promise<GmailEmail | null> {
     try {
       return emailDbService.getEmail(id) || null;
     } catch (error) {
@@ -320,7 +333,7 @@ const gmailApi = {
   },
   
   // Get all emails in a thread
-  async getEmailsByThread(threadId) {
+  async getEmailsByThread(threadId: string): Promise<GmailEmail[]> {
     try {
       return emailDbService.getEmailsByThread(threadId);
     } catch (error) {
@@ -330,7 +343,7 @@ const gmailApi = {
   },
   
   // Get attachments for an email
-  async getAttachments(emailId) {
+  async getAttachments(emailId: string): Promise<GmailAttachment[]> {
     try {
       return emailDbService.getAttachments(emailId);
     } catch (error) {
@@ -340,7 +353,7 @@ const gmailApi = {
   },
   
   // Get attachment content
-  async getAttachment(id) {
+  async getAttachment(id: string): Promise<GmailAttachment | null> {
     try {
       return emailDbService.getAttachment(id) || null;
     } catch (error) {
