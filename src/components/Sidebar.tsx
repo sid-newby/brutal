@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, MessageSquare, Settings, ChevronUp, ChevronDown, Code, Search, FileJson, FunctionSquare, Thermometer, Cpu, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Settings, ChevronUp, ChevronDown, Code, Search, FileJson, FunctionSquare, Thermometer, Cpu, ChevronRight, AlertTriangle, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as ScrollArea from '@radix-ui/react-scroll-area';
 import { Thread, ModelType } from '../types';
@@ -16,7 +16,7 @@ interface SidebarProps {
 }
 
 // Define the possible AI modes as a type
-type AIMode = 'structuredOutput' | 'codeExecution' | 'functionCalling' | 'groundingSearch' | 'none';
+type AIMode = 'structuredOutput' | 'codeExecution' | 'functionCalling' | 'groundingSearch' | 'gmailEnabled' | 'none';
 
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -120,6 +120,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           onUpdateThread(activeThreadId, { functionCalling: false });
         } else if (mode === 'groundingSearch') {
           onUpdateThread(activeThreadId, { groundingSearch: false });
+        } else if (mode === 'gmailEnabled') {
+          onUpdateThread(activeThreadId, { gmailEnabled: false });
         }
       }
     } else {
@@ -134,6 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           codeExecution: false,
           functionCalling: false,
           groundingSearch: false,
+          gmailEnabled: false,
         };
         
           // Then enable the selected mode
@@ -143,7 +146,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               'structuredOutput': 'structuredOutput',
               'codeExecution': 'codeExecution',
               'functionCalling': 'functionCalling',
-              'groundingSearch': 'groundingSearch'
+              'groundingSearch': 'groundingSearch',
+              'gmailEnabled': 'gmailEnabled'
             };
             
             // Type safety: only assign true to fields we know exist on Thread
@@ -425,6 +429,14 @@ const Sidebar: React.FC<SidebarProps> = ({
               isChecked={activeMode === 'groundingSearch'}
               onChange={() => handleModeToggle('groundingSearch')}
               disabled={!isModeAvailable('groundingSearch')}
+            />
+            
+            <ToggleSwitch 
+              icon={<Mail size={14} />}
+              label="Gmail Access"
+              isChecked={activeMode === 'gmailEnabled'}
+              onChange={() => handleModeToggle('gmailEnabled')}
+              disabled={!isModeAvailable('gmailEnabled')}
             />
           </div>
           

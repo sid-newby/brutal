@@ -9,6 +9,7 @@ interface GeminiServiceOptions {
   codeExecution?: boolean;
   functionCalling?: boolean;
   groundingSearch?: boolean;
+  gmailEnabled?: boolean;
   model?: ModelType;
   systemPrompt?: string;
 }
@@ -226,6 +227,7 @@ class GeminiService {
       codeExecution: thread.codeExecution || false,
       functionCalling: thread.functionCalling || false,
       groundingSearch: thread.groundingSearch || false,
+      gmailEnabled: thread.gmailEnabled || false,
       model: thread.model || 'gemini-2.0-pro-exp-02-05',
       systemPrompt: thread.systemPrompt || ''
     };
@@ -238,7 +240,52 @@ class GeminiService {
     }
 
     try {
-      // Handle thinking updates
+      // Check if Gmail access is enabled
+      if (options?.gmailEnabled || this.chat.gmailEnabled) {
+        // Check if content contains Gmail-related commands
+        if (content.toLowerCase().includes('gmail') || 
+            content.toLowerCase().includes('email') || 
+            content.toLowerCase().includes('mail')) {
+          
+          // Import the Gmail service dynamically
+          const gmailService = await import('./gmailService').then(module => module.default);
+          
+          // Try to handle Gmail-related queries
+          if (content.toLowerCase().includes('fetch') || 
+              content.toLowerCase().includes('get') || 
+              content.toLowerCase().includes('show') || 
+              content.toLowerCase().includes('list')) {
+            
+            try {
+              // Fetch emails with default options
+              const emails = await gmailService.fetchEmails({
+                maxResults: 5,
+                useDifferentialSync: true
+              });
+              
+              // Format an email summary for the response
+              // We'll use these messages when we implement full email browsing
+              // const emailMessages = gmailService.emailsToMessages(emails);
+              
+              const emailSummary = "I've accessed your Gmail and found the following emails:\n\n" + 
+                emails.map(email => {
+                  return `- From: ${email.from_email}\n  Subject: ${email.subject}\n  Date: ${new Date(email.received_at).toLocaleString()}\n`;
+                }).join('\n');
+              
+              // Return the email summary
+              return emailSummary;
+            } catch (error) {
+              console.error('Gmail access error:', error);
+              return "I tried to access your Gmail but encountered an error. You may need to authenticate first.";
+            }
+          }
+          
+          // Return a helpful message for other Gmail-related queries
+          return "I can help you with your Gmail. Try asking me to fetch, list, or show your recent emails.";
+        }
+      }
+      
+      // Regular chat processing - Handle thinking updates
       this.handleThinkingUpdates(options);
 
       // Set up generation config with temperature

@@ -10,6 +10,12 @@ export interface Message {
   parentId?: string;
   thinking?: string;
   children?: Message[];
+  metadata?: {
+    type?: 'email' | 'attachment';
+    emailId?: string;
+    threadId?: string;
+    hasAttachments?: boolean;
+  };
 }
 
 // Define available model options
@@ -28,6 +34,7 @@ export interface Thread {
   groundingSearch?: boolean;
   model?: ModelType; // Optional model selection
   systemPrompt?: string; // Custom system prompt
+  gmailEnabled?: boolean; // Whether Gmail access is enabled for this thread
 }
 
 export interface WebContainerOptions {
@@ -35,6 +42,8 @@ export interface WebContainerOptions {
   content?: string;
   title?: string;
 }
+
+// Gmail integration is handled in types/gmail.ts
 
 // Default settings
 export const DEFAULT_SETTINGS = {
@@ -47,5 +56,6 @@ export const DEFAULT_SETTINGS = {
   codeExecution: false,
   functionCalling: false,
   groundingSearch: false,
+  gmailEnabled: false, // Gmail disabled by default
   model: 'gemini-2.0-pro-exp-02-05' as ModelType // Default model
 };

@@ -230,6 +230,7 @@ function App() {
         codeExecution: activeThread.codeExecution || false,
         functionCalling: activeThread.functionCalling || false,
         groundingSearch: activeThread.groundingSearch || false,
+        gmailEnabled: activeThread.gmailEnabled || false,
         model: activeThread.model || 'gemini-2.0-pro-exp-02-05',
         systemPrompt: activeThread.systemPrompt,
         onThinking: (thinkingUpdate) => {

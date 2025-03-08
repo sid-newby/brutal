@@ -13,7 +13,11 @@
     "@google-cloud/vertexai": "^1.9.3",
     "@google/generative-ai": "^0.24.0",
     "@radix-ui/react-scroll-area": "^1.2.3",
+    "@types/node": "^22.13.9",
+    "date-fns": "^4.1.0",
     "framer-motion": "^12.4.10",
+    "google-auth-library": "^9.15.1",
+    "googleapis": "^146.0.0",
     "lucide-react": "^0.479.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
