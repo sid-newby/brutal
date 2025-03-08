@@ -2,6 +2,7 @@ import { Thread } from '../types';
 import { createSampleThreads } from './mockData';
 
 const STORAGE_KEY = 'brutal_threads';
+const SYSTEM_PROMPT_KEY = 'brutal_system_prompt';
 
 // Save threads to local storage
 export const saveThreads = (threads: Thread[]): void => {
@@ -57,5 +58,25 @@ export const clearThreads = (): void => {
     localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
     console.error('Error clearing threads from local storage:', error);
+  }
+};
+
+// Save global system prompt to local storage
+export const saveGlobalSystemPrompt = (systemPrompt: string): void => {
+  try {
+    localStorage.setItem(SYSTEM_PROMPT_KEY, systemPrompt);
+  } catch (error) {
+    console.error('Error saving global system prompt to local storage:', error);
+  }
+};
+
+// Load global system prompt from local storage
+export const loadGlobalSystemPrompt = (): string => {
+  try {
+    const storedSystemPrompt = localStorage.getItem(SYSTEM_PROMPT_KEY);
+    return storedSystemPrompt || '';
+  } catch (error) {
+    console.error('Error loading global system prompt from local storage:', error);
+    return '';
   }
 };

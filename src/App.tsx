@@ -10,7 +10,7 @@ import SystemPromptModal from './components/SystemPromptModal';
 import GeometricShapes from './components/GeometricShapes';
 import { Thread, Message } from './types';
 import { generateId } from './utils/mockData';
-import { saveThreads, loadThreads, clearThreads } from './utils/threadUtils';
+import { saveThreads, loadThreads, clearThreads, saveGlobalSystemPrompt, loadGlobalSystemPrompt } from './utils/threadUtils';
 import geminiService from './utils/geminiService';
 
 function App() {
@@ -20,6 +20,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [theme, setTheme] = useState<'theme-ultra-dark' | 'theme-light'>('theme-ultra-dark');
   const [systemPromptModalOpen, setSystemPromptModalOpen] = useState(false);
+  const [globalSystemPrompt, setGlobalSystemPrompt] = useState('');
   const [webContainer, setWebContainer] = useState({
     isOpen: false,
     url: '',
@@ -35,6 +36,10 @@ function App() {
     if (loadedThreads.length > 0) {
       setActiveThreadId(loadedThreads[0].id);
     }
+    
+    // Load global system prompt
+    const storedSystemPrompt = loadGlobalSystemPrompt();
+    setGlobalSystemPrompt(storedSystemPrompt);
     
     // Set initial theme class
     document.body.classList.add('theme-ultra-dark');
@@ -63,9 +68,14 @@ function App() {
   };
   
   const handleSaveSystemPrompt = (value: string) => {
-    if (!activeThreadId) return;
+    // Save as global system prompt
+    setGlobalSystemPrompt(value);
+    saveGlobalSystemPrompt(value);
     
-    handleUpdateThread(activeThreadId, { systemPrompt: value });
+    // Also save to current thread if one is active
+    if (activeThreadId) {
+      handleUpdateThread(activeThreadId, { systemPrompt: value });
+    }
   };
 
   const handleNewThread = () => {
@@ -74,7 +84,8 @@ function App() {
       title: 'New Conversation',
       messages: [],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      systemPrompt: globalSystemPrompt // Apply global system prompt to new threads
     };
     
     // Add the new thread at the beginning of the list
@@ -126,7 +137,8 @@ function App() {
       title: 'New Conversation',
       messages: [],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      systemPrompt: globalSystemPrompt // Keep the global system prompt when clearing threads
     };
     
     // Reset state with just the new thread
@@ -369,7 +381,7 @@ function App() {
       <SystemPromptModal
         isOpen={systemPromptModalOpen}
         onClose={() => setSystemPromptModalOpen(false)}
-        initialValue={activeThread?.systemPrompt || ''}
+        initialValue={globalSystemPrompt}
         onSave={handleSaveSystemPrompt}
       />
     </div>
